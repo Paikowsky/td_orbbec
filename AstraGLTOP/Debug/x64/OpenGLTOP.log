@@ -1,0 +1,7 @@
+﻿C:\Program Files (x86)\MSBuild\Microsoft.Cpp\v4.0\V140\Microsoft.CppBuild.targets(392,5): warning MSB8028: The intermediate directory (Debug\x64\) contains files shared from another project (OpenGLTOP.vcxproj).  This can lead to incorrect clean and rebuild behavior.
+  OpenGLTOP.cpp
+     Creating library C:\Program Files\Derivative\TouchDesigner099\Samples\CPlusPlus\AstraGLTOP\Debug\x64\AstraGLTOP.lib and object C:\Program Files\Derivative\TouchDesigner099\Samples\CPlusPlus\AstraGLTOP\Debug\x64\AstraGLTOP.exp
+  OpenGLTOP.vcxproj -> C:\Program Files\Derivative\TouchDesigner099\Samples\CPlusPlus\AstraGLTOP\Debug\x64\AstraGLTOP.dll
+  OpenGLTOP.vcxproj -> C:\Program Files\Derivative\TouchDesigner099\Samples\CPlusPlus\AstraGLTOP\Debug\x64\AstraGLTOP.pdb (Full PDB)
+  0 File(s) copied
+  0 File(s) copied

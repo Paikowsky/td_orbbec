@@ -50,6 +50,10 @@ public:
 								OP_Inputs*,
 								void* reserved) override;
 
+	void updateJoint(const obt::JointList& joints, obt::JointType j1, int space, const CHOP_Output* output);
+
+	void updateBody(const obt::Body & body, const CHOP_Output* output);
+
 
 	virtual int32_t		getNumInfoCHOPChans() override;
 	virtual void		getInfoCHOPChan(int index,

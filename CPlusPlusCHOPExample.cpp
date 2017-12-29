@@ -22,6 +22,9 @@ using namespace std;
 VideoStream depthStream;
 Device device;
 obt::BodyTracker tracker;
+//0 is world space (x,y,z) || 1 is depth space (u,v)
+int space;
+bool floorStaus;
 
 // These functions are basic C function, which the DLL loader can find
 // much easier than finding a C++ Class.
@@ -54,6 +57,7 @@ DestroyCHOPInstance(CHOP_CPlusPlusBase* instance)
 	// Delete the instance here, this will be called when
 	// Touch is shutting down, when the CHOP using that instance is deleted, or
 	// if the CHOP loads a different DLL
+	openni::OpenNI::shutdown();
 	delete (CPlusPlusCHOPExample*)instance;
 }
 
@@ -86,13 +90,19 @@ CPlusPlusCHOPExample::getOutputInfo(CHOP_OutputInfo* info)
 {
 	// If there is an input connected, we are going to match it's channel names etc
 	// otherwise we'll specify our own.
-	if (info->opInputs->getNumInputs() > 0)
+	
+	//world space for x,y,z
+	if (space == 0)
 	{
-		return false;
+		info->numChannels = 48;
+		info->sampleRate = 120;
+		return true;
 	}
+
+	//depth and uv space for x,y or u,v 
 	else
 	{
-		info->numChannels = 3;
+		info->numChannels = 32;
 
 		// Since we are outputting a timeslice, the system will dictate
 		// the numSamples and startIndex of the CHOP data
@@ -108,51 +118,208 @@ CPlusPlusCHOPExample::getOutputInfo(CHOP_OutputInfo* info)
 const char*
 CPlusPlusCHOPExample::getChannelName(int32_t index, void* reserved)
 {
-	switch (index)
+	if (space == 0)
 	{
-		case 0: return "p1_head_x";
-		case 1: return "p1_head_y";
-		case 2: return "p1_head_z";
+		switch (index)
+		{
+		case 0: return "p1/head_x";
+		case 1: return "p1/head_y";
+		case 2: return "p1/head_z";
+
+		case 3: return "p1/spine_shoulder_x";
+		case 4: return "p1/spine_shoulder_y";
+		case 5: return "p1/spine_shoulder_z";
+
+		case 6: return "p1/shoulder_l_x";
+		case 7: return "p1/shoulder_l_y";
+		case 8: return "p1/shoulder_l_z";
+		
+		case 9: return "p1/elbow_l_x";
+		case 10: return "p1/elbow_l_y";
+		case 11: return "p1/elbow_l_z";
+
+		case 12: return "p1/hand_l_x";
+		case 13: return "p1/hand_l_y";
+		case 14: return "p1/hand_l_z";
+		
+		case 15: return "p1/shoulder_r_x";
+		case 16: return "p1/shoulder_r_y";
+		case 17: return "p1/shoulder_r_z";
+		
+		case 18: return "p1/elbow_r_x";
+		case 19: return "p1/elbow_r_y";
+		case 20: return "p1/elbow_r_z";
+		
+		case 21: return "p1/hand_r_x";
+		case 22: return "p1/hand_r_y";
+		case 23: return "p1/hand_r_z";
+
+		case 24: return "p1/spine_mid_x";
+		case 25: return "p1/spine_mid_y";
+		case 26: return "p1/spine_mid_z";
+
+		case 27: return "p1/spine_base_x";
+		case 28: return "p1/spine_base_y";
+		case 29: return "p1/spine_base_z";
+
+		case 30: return "p1/hip_l_x";
+		case 31: return "p1/hip_l_y";
+		case 32: return "p1/hip_l_z";
+
+		case 33: return "p1/knee_l_x";
+		case 34: return "p1/knee_l_y";
+		case 35: return "p1/knee_l_z";
+
+		case 36: return "p1/foot_l_x";
+		case 37: return "p1/foot_l_y";
+		case 38: return "p1/foot_l_z";
+
+		case 39: return "p1/hip_r_x";
+		case 40: return "p1/hip_r_y";
+		case 41: return "p1/hip_r_z";
+
+		case 42: return "p1/knee_r_x";
+		case 43: return "p1/knee_r_y";
+		case 44: return "p1/knee_r_z";
+
+		case 45: return "p1/foot_r_x";
+		case 46: return "p1/foot_r_y";
+		case 47: return "p1/foot_r_z";
+
+		}
+	}
+
+	if (space == 1)
+	{
+		switch (index)
+		{
+		case 0: return "p1/head_x";
+		case 1: return "p1/head_y";
+
+		case 2: return "p1/spine_shoulder_x";
+		case 3: return "p1/spine_shoulder_y";
+
+		case 4: return "p1/shoulder_l_x";
+		case 5: return "p1/shoulder_l_y";
+
+		case 6: return "p1/elbow_l_x";
+		case 7: return "p1/elbow_l_y";
+
+		case 8: return "p1/hand_l_x";
+		case 9: return "p1/hand_l_y";
+
+		case 10: return "p1/shoulder_r_x";
+		case 11: return "p1/shoulder_r_y";
+
+		case 12: return "p1/elbow_r_x";
+		case 13: return "p1/elbow_r_y";
+
+		case 14: return "p1/hand_r_x";
+		case 15: return "p1/hand_r_y";
+
+		case 16: return "p1/spine_mid_x";
+		case 17: return "p1/spine_mid_y";
+
+		case 18: return "p1/spine_base_x";
+		case 19: return "p1/spine_base_y";
+
+		case 20: return "p1/hip_l_x";
+		case 21: return "p1/hip_l_y";
+
+		case 22: return "p1/knee_l_x";
+		case 23: return "p1/knee_l_y";
+
+		case 24: return "p1/foot_l_x";
+		case 25: return "p1/foot_l_y";
+
+		case 26: return "p1/hip_r_x";
+		case 27: return "p1/hip_r_y";
+
+		case 28: return "p1/knee_r_x";
+		case 29: return "p1/knee_r_y";
+
+		case 30: return "p1/foot_r_x";
+		case 31: return "p1/foot_r_y";
+		}
+	}
+
+	if (space == 2)
+	{
+		switch (index)
+		{
+		case 0: return "p1/head_u";
+		case 1: return "p1/head_v";
+
+		case 2: return "p1/spine_shoulder_u";
+		case 3: return "p1/spine_shoulder_v";
+		
+		case 4: return "p1/shoulder_l_u";
+		case 5: return "p1/shoulder_l_v";
+		
+		case 6: return "p1/elbow_l_u";
+		case 7: return "p1/elbow_l_v";
+		
+		case 8: return "p1/hand_l_u";
+		case 9: return "p1/hand_l_v";
+		
+		case 10: return "p1/shoulder_r_u";
+		case 11: return "p1/shoulder_r_v";
+		
+		case 12: return "p1/elbow_r_u";
+		case 13: return "p1/elbow_r_v";
+		
+		case 14: return "p1/hand_r_u";
+		case 15: return "p1/hand_r_v";
+
+		case 16: return "p1/spine_mid_u";
+		case 17: return "p1/spine_mid_v";
+
+		case 18: return "p1/spine_base_u";
+		case 19: return "p1/spine_base_v";
+		
+		case 20: return "p1/hip_l_u";
+		case 21: return "p1/hip_l_v";
+		
+		case 22: return "p1/knee_l_u";
+		case 23: return "p1/knee_l_v";
+		
+		case 24: return "p1/foot_l_u";
+		case 25: return "p1/foot_l_v";
+		
+		case 26: return "p1/hip_r_u";
+		case 27: return "p1/hip_r_v";
+		
+		case 28: return "p1/knee_r_u";
+		case 29: return "p1/knee_r_v";
+		
+		case 30: return "p1/foot_r_u";
+		case 31: return "p1/foot_r_v";
+		}
 	}
 }
 
 void
 CPlusPlusCHOPExample::execute(const CHOP_Output* output,
-							  OP_Inputs* inputs,
+							  OP_Inputs* inputs, 
 							  void* reserved)
 {
 	myExecuteCount++;
 
-	double	 scale = inputs->getParDouble("Scale");
-
-	// In this case we'll just take the first input and re-output it scaled.
+	// if inputs added - throw err message
 	if (inputs->getNumInputs() > 0)
 	{
-		// We know the first CHOP has the same number of channels
-		// because we returned false from getOutputInfo. 
-
-		inputs->enablePar("Speed", 0);	// not used
-		inputs->enablePar("Reset", 0);	// not used
-		inputs->enablePar("Shape", 0);	// not used
-
-		int ind = 0;
-		for (int i = 0 ; i < output->numChannels; i++)
-		{
-			for (int j = 0; j < output->numSamples; j++)
-			{
-				const OP_CHOPInput	*cinput = inputs->getInputCHOP(0);
-				output->channels[i][j] = float(cinput->getChannelData(i)[ind] * scale);
-				ind++;
-
-				// Make sure we don't read past the end of the CHOP input
-				ind = ind % cinput->numSamples;
-			}
-		}
-
-	}
-	else // If no input is connected, lets output a sine wave instead
+		std::cout << "not compatible with input chops";
+	} 
+	
+	
+	// If no input is connected, do skeletal tracking
+	else 
 	{
-		
+		//enable custom parameters
+		space = inputs->getParInt("Space");
+		bool floorStaus = inputs->getParInt("Floor");
+
+		//begin reading frames with openni
 		openni::VideoFrameRef openniFrame;
 		depthStream.readFrame(&openniFrame);
 
@@ -174,9 +341,13 @@ CPlusPlusCHOPExample::execute(const CHOP_Output* output,
 		{
 			auto bodyFrame = frameResult.take_value();
 
-			if (bodyFrame.floor_detected())
+			//TODO ADD FLOOR PLANE AND BODY MASKS TO OUTPUT
+			if (bodyFrame.floor_detected() && floorStaus == TRUE)
 			{
 				const auto& p = bodyFrame.floor_plane();
+				
+				//int numChan = output->numChannels;
+
 				std::cout << "Floor plane: ["
 					<< p.a() << ", " << p.b() << ", " << p.c() << ", " << p.d()
 					<< "]" << std::endl;
@@ -184,51 +355,29 @@ CPlusPlusCHOPExample::execute(const CHOP_Output* output,
 
 			//You can also access the floor mask with:
 			//FloorMask floorMask = bodyFrame.floor_mask();
+			
 			//Body mask is also available:
 			//BodyMask bodymask = bodyFrame.body_mask();
 
+			//use to figure out how many bodies are in frame
+			//auto bodyCount = bodyFrame.bodies();
+
+
 			for (const auto& body : bodyFrame.bodies())
 			{
+				
+				if (body.status() == obt::BodyStatus::NotTracking || body.status() == obt::BodyStatus::TrackingLost) {
+					int chans = output->numChannels;
+					
+					for (int i = 0; i < chans; i++) {
+						output->channels[i] = 0;
+					}
+					
+				}
+					
 				if (body.status() != obt::BodyStatus::TrackingLost)
 				{
-					for (auto joint : body.joints())
-					{
-						if (joint.type() == obt::JointType::Head)
-						{
-							const auto headPos = joint.world_position();
-
-							//output pos of head
-							for (int i = 0; i < output->numChannels; i++)
-							{
-								
-								switch (i)
-								{
-									case 0: 
-										for (int j = 0; j < output->numSamples; j++)
-										{
-											output->channels[0][j] = float(headPos.x);
-										}
-									
-									case 1:
-										for (int j = 0; j < output->numSamples; j++)
-										{
-											output->channels[1][j] = float(headPos.y);
-										}
-									
-									case 2:
-										for (int j = 0; j < output->numSamples; j++)
-										{
-											output->channels[2][j] = float(headPos.z);
-										}
-								}
-							}
-							
-							std::cout << "Body " << +body.id()
-								<< " head @ " << headPos.x << ", " << headPos.y << ", " << headPos.z
-								<< std::endl;
-							break;
-						}
-					}
+					updateBody(body, output);
 				}
 				else
 				{
@@ -238,7 +387,7 @@ CPlusPlusCHOPExample::execute(const CHOP_Output* output,
 		}
 	}
 		
-			//openni::OpenNI::shutdown();
+			
 
 		/*
 		inputs->enablePar("Speed", 1);
@@ -296,6 +445,129 @@ CPlusPlusCHOPExample::execute(const CHOP_Output* output,
 		myOffset += step * output->numSamples; 
 	}
 	*/
+}
+
+void CPlusPlusCHOPExample::updateJoint(const obt::JointList & joints, obt::JointType j1, int space, const CHOP_Output* output)
+{
+	const auto& joint = joints[int(j1)];
+
+	int index = int(j1);
+
+	if (joint.status() == obt::TrackingStatus::NotTracked)
+	{
+		return;
+	}
+
+	if (space == 0)
+	{
+		//world position
+		const auto& j1 = joint.world_position();
+
+		for (int i = 0; i < 4; i++)
+		{
+
+			switch (i)
+			{
+			case 0:
+				for (int j = 0; j < output->numSamples; j++)
+				{
+					output->channels[index * 3][j] = float(j1.x);
+				}
+
+			case 1:
+				for (int j = 0; j < output->numSamples; j++)
+				{
+					output->channels[(index * 3) + 1][j] = float(j1.y);
+				}
+			case 2:
+				for (int j = 0; j < output->numSamples; j++)
+				{
+					output->channels[(index * 3) + 2][j] = float(j1.z);
+				}
+			}
+		}
+
+	}
+
+
+	if (space == 1)
+	{
+		//depth position
+		const auto& j1 = joint.depth_position();
+
+		for (int i = 0; i < 3; i++)
+		{
+
+			switch (i)
+			{
+			case 0:
+				for (int j = 0; j < output->numSamples; j++)
+				{
+					output->channels[index*2][j] = float(j1.x);
+				}
+
+			case 1:
+				for (int j = 0; j < output->numSamples; j++)
+				{
+					output->channels[(index*2)+1][j] = float(j1.y);
+				}
+			}
+		}
+
+	}
+
+	if (space == 2)
+	{
+		//UV position
+		const auto& j1 = joint.depth_position();
+
+		for (int i = 0; i < 3; i++)
+		{
+
+			switch (i)
+			{
+			case 0:
+				for (int j = 0; j < output->numSamples; j++)
+				{
+					float normalized_x = j1.x / 640;
+					output->channels[index * 2][j] = float(normalized_x);
+				}
+
+			case 1:
+				for (int j = 0; j < output->numSamples; j++)
+				{
+					float normalized_y = j1.y / 480;
+					output->channels[(index * 2) + 1][j] = float(normalized_y);
+				}
+			}
+		}
+
+	}
+}
+
+void CPlusPlusCHOPExample::updateBody(const obt::Body& body, const CHOP_Output* output)
+{
+	for (auto joint : body.joints())
+	{
+		const auto& joints = body.joints();
+
+		updateJoint(joints, obt::JointType::Head, space, output);
+		updateJoint(joints, obt::JointType::ShoulderSpine, space, output);
+		updateJoint(joints, obt::JointType::LeftShoulder, space, output);
+		updateJoint(joints, obt::JointType::LeftElbow, space, output);
+		updateJoint(joints, obt::JointType::LeftHand, space, output);
+		updateJoint(joints, obt::JointType::RightShoulder, space, output);
+		updateJoint(joints, obt::JointType::RightElbow, space, output);
+		updateJoint(joints, obt::JointType::RightHand, space, output);
+		updateJoint(joints, obt::JointType::MidSpine, space, output);
+		updateJoint(joints, obt::JointType::BaseSpine, space, output);
+		updateJoint(joints, obt::JointType::LeftHip, space, output);
+		updateJoint(joints, obt::JointType::LeftKnee, space, output);
+		updateJoint(joints, obt::JointType::LeftFoot, space, output);
+		updateJoint(joints, obt::JointType::RightHip, space, output);
+		updateJoint(joints, obt::JointType::RightKnee, space, output);
+		updateJoint(joints, obt::JointType::RightFoot, space, output);
+	}
 }
 
 int32_t
@@ -390,45 +662,29 @@ CPlusPlusCHOPExample::getInfoDATEntries(int32_t index,
 void
 CPlusPlusCHOPExample::setupParameters(OP_ParameterManager* manager)
 {
-	// speed
+
+	// Floor Plane
 	{
 		OP_NumericParameter	np;
 
-		np.name = "Speed";
-		np.label = "Speed";
-		np.defaultValues[0] = 1.0;
-		np.minSliders[0] = -10.0;
-		np.maxSliders[0] =  10.0;
+		np.name = "Floor";
+		np.label = "Floor Plane";
 		
-		OP_ParAppendResult res = manager->appendFloat(np);
+		OP_ParAppendResult res = manager->appendToggle(np);
 		assert(res == OP_ParAppendResult::Success);
 	}
 
-	// scale
-	{
-		OP_NumericParameter	np;
-
-		np.name = "Scale";
-		np.label = "Scale";
-		np.defaultValues[0] = 1.0;
-		np.minSliders[0] = -10.0;
-		np.maxSliders[0] =  10.0;
-		
-		OP_ParAppendResult res = manager->appendFloat(np);
-		assert(res == OP_ParAppendResult::Success);
-	}
-
-	// shape
+	// Space
 	{
 		OP_StringParameter	sp;
 
-		sp.name = "Shape";
-		sp.label = "Shape";
+		sp.name = "Space";
+		sp.label = "Space";
 
-		sp.defaultValue = "Sine";
+		sp.defaultValue = "World";
 
-		const char *names[] = { "Sine", "Square", "Ramp" };
-		const char *labels[] = { "Sine", "Square", "Ramp" };
+		const char *names[] = { "World", "Depth", "Uv"};
+		const char *labels[] = { "World", "Depth (""Projective"" in Pixels of Input Source)", "UV"};
 
 		OP_ParAppendResult res = manager->appendMenu(sp, 3, names, labels);
 		assert(res == OP_ParAppendResult::Success);
@@ -452,7 +708,7 @@ CPlusPlusCHOPExample::pulsePressed(const char* name)
 {
 	if (!strcmp(name, "Reset"))
 	{
-		myOffset = 0.0;
+		tracker.reset();
 	}
 }
 
